@@ -5,9 +5,10 @@ import 'package:flame/events.dart';
 import 'package:flame_example/components/waste.dart';
 import 'package:flame_example/klondike_game.dart';
 
+import '../models/pile.dart';
 import 'card.dart';
 
-class StockPile extends PositionComponent with TapCallbacks {
+class StockPile extends PositionComponent with TapCallbacks implements Pile {
   @override
   bool get debugMode => true;
 
@@ -20,6 +21,7 @@ class StockPile extends PositionComponent with TapCallbacks {
     card.position = position;
     card.priority = _cards.length;
     _cards.add(card);
+    card.pile = this;
   }
 
   @override
@@ -61,4 +63,20 @@ class StockPile extends PositionComponent with TapCallbacks {
       _circlePaint,
     );
   }
+
+  @override
+  bool canMoveCard(Card card) {
+    return false;
+  }
+
+  @override
+  bool canAcceptCard(Card card) {
+    return false;
+  }
+
+  @override
+  void removeCard(Card card) => throw StateError('cannot remove cards from here');
+
+  @override
+  void returnCard(Card card) => throw StateError('cannot remove cards from here');
 }
