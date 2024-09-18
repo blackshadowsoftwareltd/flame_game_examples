@@ -4,7 +4,7 @@ import '../klondike_game.dart';
 import '../models/pile.dart';
 import 'card.dart';
 
-class WastePile extends PositionComponent implements Pile {
+class WastePile extends PositionComponent with HasGameReference<KlondikeGame> implements Pile {
   @override
   bool get debugMode => true;
 
@@ -23,6 +23,10 @@ class WastePile extends PositionComponent implements Pile {
   }
 
   void _fanOutTopCards() {
+    if (game.klondikeDraw == 1) {
+      // No fan-out in Klondike Draw 1.
+      return;
+    }
     final n = _cards.length;
     for (var i = 0; i < n; i++) {
       _cards[i].position = position;

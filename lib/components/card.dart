@@ -1,40 +1,61 @@
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flame/components.dart';
+import 'package:flame/effects.dart';
 import 'package:flame/events.dart';
+import 'package:flutter/animation.dart';
 import '../klondike_game.dart';
 import '../models/pile.dart';
 import '../models/ranks.dart';
 import '../models/suit.dart';
+import 'stock.dart';
 import 'tableau.dart';
 
 class Card extends PositionComponent with DragCallbacks {
-  Card(int intRank, int intSuit)
+  Card(int intRank, int intSuit, {this.isBaseCard = false})
       : rank = Rank.fromInt(intRank),
         suit = Suit.fromInt(intSuit),
         _faceUp = false,
         super(size: KlondikeGame.cardSize);
   final Rank rank;
   final Suit suit;
+  final bool isBaseCard;
 
-  bool _faceUp;
   Pile? pile;
+  bool _faceUp;
+  bool _isDragging = false, _isAnimatedFlip = false, _isFaceUpView = false;
+  Vector2 _whereCardStarted = Vector2(0, 0);
   final List<Card> attachedCards = [];
   bool get isFaceUp => _faceUp;
   bool get isFaceDown => !_faceUp;
 
-  void flip() => _faceUp = !_faceUp;
+  void flip() {
+    if (_isAnimatedFlip) {
+      _faceUp = _isFaceUpView;
+    } else {
+      _faceUp = !_faceUp;
+      _isFaceUpView = _faceUp;
+    }
+  }
 
   @override
   String toString() => rank.label + suit.label; // e.g. "Q♠" or "10♦"
 
   @override
   void render(Canvas canvas) {
-    if (_faceUp) {
+    if (isBaseCard) {
+      _renderBaseCard(canvas);
+      return;
+    }
+    if (_isFaceUpView) {
       _renderFront(canvas);
     } else {
       _renderBack(canvas);
     }
+  }
+
+  void _renderBaseCard(Canvas canvas) {
+    canvas.drawRRect(cardRRect, backBorderPaint1);
   }
 
 // ? - This code for render front.-----------------------------  {
@@ -207,12 +228,44 @@ class Card extends PositionComponent with DragCallbacks {
 // ? - This code for render back.-----------------------------  }
 
   @override
+  void onTapCancel(TapCancelEvent event) {
+    if (pile is StockPile) {
+      _isDragging = false;
+
+      // handleTapUp();
+    }
+  }
+
+  // @override
+  // void onDragStart(DragStartEvent event) {
+  //   if (pile?.canMoveCard(this) ?? false) {
+  //     super.onDragStart(event);
+  //     priority = 100;
+  //     if (pile is TableauPile) {
+  //       attachedCards.clear();
+  //       final extraCards = (pile! as TableauPile).cardsOnTop(this);
+  //       for (final card in extraCards) {
+  //         card.priority = attachedCards.length + 101;
+  //         attachedCards.add(card);
+  //       }
+  //     }
+  //   }
+  // }
+
+  @override
   void onDragStart(DragStartEvent event) {
+    super.onDragStart(event);
+    if (pile is StockPile) {
+      _isDragging = false;
+      return;
+    }
+    // Clone the position, else _whereCardStarted changes as the position does.
+    _whereCardStarted = position.clone();
+    attachedCards.clear();
     if (pile?.canMoveCard(this) ?? false) {
-      super.onDragStart(event);
+      _isDragging = true;
       priority = 100;
       if (pile is TableauPile) {
-        attachedCards.clear();
         final extraCards = (pile! as TableauPile).cardsOnTop(this);
         for (final card in extraCards) {
           card.priority = attachedCards.length + 101;
@@ -254,12 +307,96 @@ class Card extends PositionComponent with DragCallbacks {
         return;
       }
     }
-    pile!.returnCard(this);
+    doMove(_whereCardStarted, onComplete: () => pile!.returnCard(this));
     if (attachedCards.isNotEmpty) {
       for (var card in attachedCards) {
-        pile!.returnCard(card);
+        final offset = card.position - position;
+        card.doMove(
+          _whereCardStarted + offset,
+          onComplete: () {
+            pile!.returnCard(card);
+          },
+        );
       }
       attachedCards.clear();
     }
+  }
+
+// ? - This code for Move.-----------------------------  }
+  void doMove(
+    Vector2 to, {
+    double speed = 10.0,
+    double start = 0.0,
+    int startPriority = 100,
+    Curve curve = Curves.easeOutQuad,
+    VoidCallback? onComplete,
+  }) {
+    assert(speed > 0.0, 'Speed must be > 0 widths per second');
+    final dt = (to - position).length / (speed * size.x);
+    assert(dt > 0, 'Distance to move must be > 0');
+    add(
+      CardMoveEffect(
+        to,
+        EffectController(duration: dt, startDelay: start, curve: curve),
+        transitPriority: startPriority,
+        onComplete: () {
+          onComplete?.call();
+        },
+      ),
+    );
+  }
+
+  void turnFaceUp({
+    double time = 0.3,
+    double start = 0.0,
+    VoidCallback? onComplete,
+  }) {
+    assert(!_isFaceUpView, 'Card must be face-down before turning face-up.');
+    assert(time > 0.0, 'Time to turn card over must be > 0');
+    _isAnimatedFlip = true;
+    anchor = Anchor.topCenter;
+    position += Vector2(width / 2, 0);
+    priority = 100;
+    add(
+      ScaleEffect.to(
+        Vector2(scale.x / 100, scale.y),
+        EffectController(
+          startDelay: start,
+          curve: Curves.easeOutSine,
+          duration: time / 2,
+          onMax: () {
+            _isFaceUpView = true;
+          },
+          reverseDuration: time / 2,
+          onMin: () {
+            _isAnimatedFlip = false;
+            _faceUp = true;
+            anchor = Anchor.topLeft;
+            position -= Vector2(width / 2, 0);
+          },
+        ),
+        onComplete: () {
+          onComplete?.call();
+        },
+      ),
+    );
+  }
+}
+
+class CardMoveEffect extends MoveToEffect {
+  CardMoveEffect(
+    super.destination,
+    super.controller, {
+    super.onComplete,
+    this.transitPriority = 100,
+  });
+
+  final int transitPriority;
+
+  @override
+  void onStart() {
+    super.onStart(); // Flame connects MoveToEffect to EffectController.
+
+    parent?.priority = transitPriority;
   }
 }

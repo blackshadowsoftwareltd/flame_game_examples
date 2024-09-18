@@ -8,7 +8,7 @@ import 'package:flame_example/klondike_game.dart';
 import '../models/pile.dart';
 import 'card.dart';
 
-class StockPile extends PositionComponent with TapCallbacks implements Pile {
+class StockPile extends PositionComponent with HasGameReference<KlondikeGame> implements Pile {
   @override
   bool get debugMode => true;
 
@@ -27,14 +27,13 @@ class StockPile extends PositionComponent with TapCallbacks implements Pile {
   @override
   void onTapUp(TapUpEvent event) {
     final wastePile = parent!.firstChild<WastePile>()!;
-
     if (_cards.isEmpty) {
       wastePile.removeAllCards().reversed.forEach((card) {
         card.flip();
         acquireCard(card);
       });
     } else {
-      for (int i = 0; i < 3; i++) {
+      for (var i = 0; i < game.klondikeDraw; i++) {
         if (_cards.isNotEmpty) {
           final card = _cards.removeLast();
           card.flip();

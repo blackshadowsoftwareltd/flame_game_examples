@@ -11,18 +11,23 @@ class FoundationPile extends PositionComponent implements Pile {
   @override
   bool get debugMode => true;
 
-  FoundationPile(int intSuit, {super.position})
+  FoundationPile(int intSuit, this.checkWin, {super.position})
       : suit = Suit.fromInt(intSuit),
         super(size: KlondikeGame.cardSize);
   final Suit suit;
   final List<Card> _cards = [];
+  final VoidCallback checkWin;
 
+  bool get isFull => _cards.length == 13;
   void acquireCard(Card card) {
     assert(card.isFaceUp);
     card.position = position;
     card.priority = _cards.length;
     _cards.add(card);
     card.pile = this;
+    if (isFull) {
+      checkWin(); // Get KlondikeWorld to check all FoundationPiles.
+    }
   }
 
   final _borderPaint = Paint()
