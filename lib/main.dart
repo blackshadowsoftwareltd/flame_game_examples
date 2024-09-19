@@ -1,12 +1,10 @@
-import 'package:flame/game.dart';
+import 'package:flame_example/screens.dart';
 import 'package:flutter/material.dart';
 
-import 'klondike_game.dart';
-
 void main() {
-  final game = KlondikeGame();
-  runApp(MaterialApp(
+  runApp(const MaterialApp(
     // showPerformanceOverlay: true,
-    home: GameWidget(game: game),
+    debugShowCheckedModeBanner: false,
+    home: Screens(),
   ));
 }

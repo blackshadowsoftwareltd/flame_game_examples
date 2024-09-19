@@ -2,8 +2,8 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
-import 'package:flame_example/components/waste.dart';
-import 'package:flame_example/klondike_game.dart';
+import 'package:flame_example/clone/card_game/components/waste.dart';
+import 'package:flame_example/clone/card_game/klondike_game.dart';
 
 import '../models/pile.dart';
 import 'card.dart';
