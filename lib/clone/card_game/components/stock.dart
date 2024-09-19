@@ -16,6 +16,7 @@ class StockPile extends PositionComponent with HasGameReference<KlondikeGame> im
 
   final List<Card> _cards = [];
 
+  @override
   void acquireCard(Card card) {
     assert(!card.isFaceUp);
     card.position = position;
